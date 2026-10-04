@@ -1,0 +1,71 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ragqa"
+version = "1.0.0"
+description = "Citation-grounded document Q&A (RAG) on PostgreSQL/pgvector with hybrid retrieval and a statistically rigorous evaluation layer."
+readme = "README.md"
+license = { text = "MIT" }
+authors = [{ name = "Aymen Charef Eddine Guemmaz" }]
+requires-python = ">=3.10"
+keywords = ["rag", "retrieval-augmented-generation", "pgvector", "fastapi", "llm", "evaluation"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Framework :: FastAPI",
+    "License :: OSI Approved :: MIT License",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "numpy>=1.26",
+    "pydantic>=2.6",
+    "pydantic-settings>=2.2",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+    "ruff==0.16.10",
+    "mypy==2.4.0",
+    "types-PyYAML",
+]
+
+[project.urls]
+Repository = "https://github.com/aymguemmaz-tech/rag-document-qa"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ragqa"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.coverage.run]
+source = ["ragqa"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "C4", "RUF"]
+ignore = ["RUF001", "RUF002", "RUF003", "B008", "B905", "RUF007"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["B011"]
+"docs/*" = ["E501"]  # prose strings in the PDF builder
+
+[tool.mypy]
+python_version = "3.10"
+plugins = ["pydantic.mypy"]
+packages = ["ragqa"]
+mypy_path = "src"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+no_implicit_optional = true
+check_untyped_defs = true
