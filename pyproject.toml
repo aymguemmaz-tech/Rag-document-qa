@@ -22,9 +22,13 @@ dependencies = [
     "pydantic>=2.6",
     "pydantic-settings>=2.2",
     "pyyaml>=6.0",
+    "pypdf>=4.0",
+    "openai>=1.40",
+    "wordllama>=0.3",
 ]
 
 [project.optional-dependencies]
+docs = ["reportlab>=4.0"]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=5.0",
