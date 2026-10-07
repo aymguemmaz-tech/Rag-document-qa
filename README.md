@@ -15,7 +15,7 @@ comes with an **evaluation layer that measures every design choice** instead of 
 
 - [x] **Core** — typed data model, deterministic tokenizer, sentence splitter and stemmer, configuration
 - [x] **Ingestion** — Markdown, PDF, HTML and text loaders; four chunking strategies; OpenAI, WordLlama and hashing embedders with a SQLite cache
-- [ ] **Storage** — in-memory store and PostgreSQL/pgvector (HNSW) with Okapi BM25 computed in SQL
+- [x] **Storage** — in-memory store and PostgreSQL/pgvector (HNSW) with Okapi BM25 computed in SQL
 - [ ] **Generation** — OpenAI-compatible LLM client, versioned prompts, `[S#]` citations, injection guard, grounding verifier, extractive baseline
 - [ ] **Retrieval** — hybrid search with Reciprocal Rank Fusion, four rerankers, multi-query and HyDE expansion
 - [ ] **Serving** — RAG pipeline, FastAPI service with streaming, web UI, `ragqa` CLI
@@ -32,7 +32,7 @@ git clone https://github.com/aymguemmaz-tech/rag-document-qa.git
 cd rag-document-qa
 python -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
-pytest
+pytest                            # add RAGQA_TEST_DATABASE_URL=postgresql://... for the pgvector tests
 ruff check . && ruff format --check . && mypy
 ```
 

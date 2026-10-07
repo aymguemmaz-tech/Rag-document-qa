@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import os
+import uuid
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -54,3 +57,16 @@ def corpus_docs() -> list[Document]:
 @pytest.fixture
 def embedder() -> HashingEmbedder:
     return HashingEmbedder(dim=512)
+
+
+@pytest.fixture
+def pg_url() -> Iterator[str]:
+    url = os.environ.get("RAGQA_TEST_DATABASE_URL")
+    if not url:
+        pytest.skip("set RAGQA_TEST_DATABASE_URL to run PostgreSQL/pgvector integration tests")
+    yield url
+
+
+@pytest.fixture
+def collection_name() -> str:
+    return "t_" + uuid.uuid4().hex[:10]

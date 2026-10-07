@@ -5,7 +5,12 @@ from typing import Any
 import numpy as np
 import pytest
 
+from ragqa.config import ChunkingConfig
 from ragqa.embeddings import CachedEmbedder, HashingEmbedder, OpenAIEmbedder, WordLlamaEmbedder
+from ragqa.ingest.chunking import build_chunker
+from ragqa.store import CollectionMismatchError, MemoryStore
+from ragqa.text import analyze
+from ragqa.types import Document
 
 
 def test_hashing_embedder_is_deterministic_and_normalised() -> None:
@@ -63,3 +68,54 @@ def test_openai_embedder_batches_sorts_and_counts_usage() -> None:
     assert all(r["dimensions"] == 3 for r in requests)
     assert vectors[1] @ np.array([2.0, 1.0, 0.0]) / np.sqrt(5) == pytest.approx(1.0, abs=1e-6)  # order restored
     assert emb.usage_tokens == 30 and emb.cost_usd == pytest.approx(30 * 0.02 / 1e6)
+
+
+def _chunks(doc: Document, emb: HashingEmbedder) -> tuple[list[Any], np.ndarray]:
+    chunks = build_chunker(ChunkingConfig(size=60)).chunk(doc)
+    return chunks, emb.embed([c.embed_text for c in chunks])
+
+
+def test_memory_store_crud_search_and_persistence(
+    tmp_path: Path, sample_doc: Document, embedder: HashingEmbedder
+) -> None:
+    store = MemoryStore(persist_dir=tmp_path)
+    store.ensure_collection("docs", embedder.name, embedder.dim)
+    chunks, vectors = _chunks(sample_doc, embedder)
+    store.upsert_document("docs", sample_doc, chunks, vectors)
+    assert store.document_hash("docs", "battery-sop") == sample_doc.content_hash
+    assert store.get_collection("docs").num_chunks == len(chunks)
+
+    dense = store.dense_search("docs", embedder.embed_query("AVD extinguisher fire"), 3)
+    assert "AVD" in dense[0].chunk.text and [d.rank for d in dense] == [1, 2, 3]
+    lexical = store.lexical_search("docs", "quarantine bin swollen", 2)
+    assert "quarantine" in lexical[0].chunk.text
+
+    store.upsert_document("docs", sample_doc, chunks[:2], vectors[:2])  # replace, not append
+    assert store.get_collection("docs").num_chunks == 2
+
+    reloaded = MemoryStore(persist_dir=tmp_path)
+    assert reloaded.get_collection("docs").num_chunks == 2
+    assert reloaded.delete_document("docs", "battery-sop") is True
+    assert reloaded.delete_document("docs", "battery-sop") is False
+    assert reloaded.list_documents("docs") == []
+
+
+def test_collection_refuses_a_different_embedder(embedder: HashingEmbedder) -> None:
+    store = MemoryStore()
+    store.ensure_collection("docs", embedder.name, embedder.dim)
+    with pytest.raises(CollectionMismatchError):
+        store.ensure_collection("docs", "openai:text-embedding-3-small", 1536)
+    with pytest.raises(ValueError):
+        store.ensure_collection("Bad Name!", embedder.name, embedder.dim)
+
+
+def test_term_stats_reflect_corpus_frequencies(sample_doc: Document, embedder: HashingEmbedder) -> None:
+    store = MemoryStore()
+    assert store.term_stats("missing") is None
+    store.ensure_collection("docs", embedder.name, embedder.dim)
+    chunks, vectors = _chunks(sample_doc, embedder)
+    store.upsert_document("docs", sample_doc, chunks, vectors)
+    stats = store.term_stats("docs")
+    assert stats is not None and stats.n == len(chunks)
+    common, rare, unseen = (analyze(w)[0] for w in ("battery", "quarantine", "ceo"))  # same analyzer as BM25
+    assert stats.idf(common) < stats.idf(rare) < stats.idf(unseen)
