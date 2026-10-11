@@ -30,6 +30,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+rerank = ["sentence-transformers>=3.0"]
 docs = ["reportlab>=4.0"]
 dev = [
     "pytest>=8.0",

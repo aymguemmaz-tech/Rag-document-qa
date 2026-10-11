@@ -17,7 +17,7 @@ comes with an **evaluation layer that measures every design choice** instead of 
 - [x] **Ingestion** — Markdown, PDF, HTML and text loaders; four chunking strategies; OpenAI, WordLlama and hashing embedders with a SQLite cache
 - [x] **Storage** — in-memory store and PostgreSQL/pgvector (HNSW) with Okapi BM25 computed in SQL
 - [x] **Generation** — OpenAI-compatible LLM client, versioned prompts, `[S#]` citations, injection guard, grounding verifier, extractive baseline
-- [ ] **Retrieval** — hybrid search with Reciprocal Rank Fusion, four rerankers, multi-query and HyDE expansion
+- [x] **Retrieval** — hybrid search with Reciprocal Rank Fusion, four rerankers, multi-query and HyDE expansion
 - [ ] **Serving** — RAG pipeline, FastAPI service with streaming, web UI, `ragqa` CLI
 - [ ] **Evaluation** — 150-question gold set with evidence spans, metrics, bootstrap CIs, permutation tests
 - [ ] **Ablations** — experiment grid, output variability study, report with charts, CI quality gate
