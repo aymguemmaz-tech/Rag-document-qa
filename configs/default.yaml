@@ -1,0 +1,23 @@
+# Default pipeline configuration (the evaluated baseline). Load with RAGQA_PIPELINE_CONFIG or --config.
+pipeline:
+  chunking:
+    strategy: structure        # fixed | recursive | semantic | structure
+    size: 200                  # max tokens per chunk
+    overlap: 30
+    contextual_headers: true   # embed "Doc › Section" with each chunk
+  retrieval:
+    mode: hybrid               # dense | lexical | hybrid (RRF)
+    k: 5
+    fetch_k: 30
+    rerank: none               # none | mmr | maxsim | llm | cross_encoder
+    query_expansion: none      # none | multi_query | hyde (needs an LLM)
+  generation:
+    prompt: strict             # baseline | cited | strict (prompts/templates.yaml)
+    max_context_tokens: 1800
+    context_order: relevance   # relevance | sandwich
+    max_sentences: 2           # extractive generator only
+    abstain_threshold: 0.46    # extractive generator only - calibrated on the dev split
+  guard:
+    injection: drop            # off | flag | drop
+    grounding: flag            # off | flag | abstain
+    grounding_threshold: 0.5

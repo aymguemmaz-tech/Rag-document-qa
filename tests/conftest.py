@@ -7,8 +7,12 @@ from pathlib import Path
 
 import pytest
 
+from ragqa.config import PipelineConfig
 from ragqa.embeddings import HashingEmbedder
+from ragqa.generation.generators import ExtractiveGenerator
 from ragqa.ingest.loaders import load_path, parse_markdown
+from ragqa.pipeline import RAGPipeline
+from ragqa.store import MemoryStore
 from ragqa.types import Document
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -70,3 +74,17 @@ def pg_url() -> Iterator[str]:
 @pytest.fixture
 def collection_name() -> str:
     return "t_" + uuid.uuid4().hex[:10]
+
+
+@pytest.fixture
+def pipeline(embedder: HashingEmbedder, sample_doc: Document) -> RAGPipeline:
+    config = PipelineConfig().with_overrides({"generation.abstain_threshold": 0.3})
+    pipe = RAGPipeline(
+        config,
+        store=MemoryStore(),
+        embedder=embedder,
+        generator=ExtractiveGenerator(embedder, config.generation),
+        collection="test",
+    )
+    pipe.ingest([sample_doc])
+    return pipe

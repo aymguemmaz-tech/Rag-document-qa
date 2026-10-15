@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Document Q&amp;A</title>
+<style>
+  :root {
+    --bg: #f7f7f5; --panel: #ffffff; --ink: #141413; --ink-2: #5b5a56; --line: #e5e4df;
+    --accent: #2a78d6; --accent-soft: #e8f1fc; --warn: #b4560f; --warn-soft: #fdf1e7; --ok: #137a3a;
+    --radius: 10px; --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #121211; --panel: #1b1b1a; --ink: #f2f1ec; --ink-2: #a9a8a1; --line: #2e2e2b;
+            --accent: #5b9ff0; --accent-soft: #1d2a3a; --warn: #f0a15f; --warn-soft: #3a2a1d; --ok: #54c27c; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; align-items: center; gap: 12px; padding: 14px 24px; border-bottom: 1px solid var(--line);
+           background: var(--panel); flex-wrap: wrap; }
+  header h1 { font-size: 17px; margin: 0; font-weight: 650; }
+  .badge { font-size: 12px; color: var(--ink-2); border: 1px solid var(--line); border-radius: 99px; padding: 2px 10px; }
+  header input#apikey { margin-left: auto; flex: 0 0 220px; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; padding: 20px 24px; max-width: 1200px; margin: 0 auto; }
+  @media (max-width: 860px) { main { grid-template-columns: 1fr; padding: 16px; } header input#apikey { margin-left: 0; flex: 1 1 100%; } }
+  section, aside > div { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
+  aside { display: flex; flex-direction: column; gap: 16px; }
+  form.ask { display: flex; gap: 8px; }
+  input, button { font: inherit; color: inherit; }
+  input[type=text], input[type=password] { flex: 1; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+  button { padding: 9px 16px; border: 0; border-radius: 8px; background: var(--accent); color: #fff; font-weight: 600; cursor: pointer; }
+  button.ghost { background: transparent; color: var(--ink-2); border: 1px solid var(--line); padding: 4px 10px; font-weight: 500; }
+  button:disabled { opacity: .55; cursor: progress; }
+  .answer { margin-top: 16px; font-size: 16px; min-height: 24px; white-space: pre-wrap; }
+  .answer .cite { display: inline-block; font: 600 11px var(--mono); color: var(--accent); background: var(--accent-soft);
+                  border-radius: 5px; padding: 1px 5px; margin: 0 1px; cursor: pointer; vertical-align: 1px; }
+  .meta { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 12px; font-size: 12.5px; color: var(--ink-2); }
+  .meta b { color: var(--ink); font-weight: 600; }
+  .flag { color: var(--warn); background: var(--warn-soft); border-radius: 5px; padding: 0 6px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .04em; color: var(--ink-2); margin: 22px 0 10px; }
+  h2:first-child { margin-top: 0; }
+  .source { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin-bottom: 8px; transition: border-color .2s; }
+  .source.cited { border-color: var(--accent); }
+  .source.flash { box-shadow: 0 0 0 3px var(--accent-soft); }
+  .source header { all: unset; display: flex; gap: 8px; align-items: baseline; font-size: 13px; }
+  .source .label { font: 600 12px var(--mono); color: var(--accent); }
+  .source .loc { font-weight: 600; }
+  .source .score { margin-left: auto; color: var(--ink-2); font: 12px var(--mono); }
+  .source p { margin: 6px 0 0; font-size: 13.5px; color: var(--ink-2); white-space: pre-wrap; max-height: 9.5em; overflow: auto; }
+  .muted { color: var(--ink-2); font-size: 13px; }
+  ul.docs { list-style: none; margin: 0; padding: 0; font-size: 13.5px; }
+  ul.docs li { display: flex; gap: 8px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--line); }
+  ul.docs li span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .examples button { margin: 4px 6px 0 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Document Q&amp;A</h1>
+  <span class="badge" id="health">connecting…</span>
+  <input type="password" id="apikey" placeholder="X-API-Key (if required)" aria-label="API key">
+</header>
+<main>
+  <section>
+    <form class="ask" id="ask">
+      <input type="text" id="question" placeholder="Ask about your documents…" autocomplete="off" required aria-label="Question">
+      <button id="go">Ask</button>
+    </form>
+    <div class="examples muted" id="examples">Try:
+      <button class="ghost" type="button">How long is identifiable GPS trip data kept?</button>
+      <button class="ghost" type="button">What caused the April payment outage?</button>
+      <button class="ghost" type="button">Who is the CEO's favourite football club?</button>
+    </div>
+    <div class="answer" id="answer" aria-live="polite"></div>
+    <div class="meta" id="meta"></div>
+    <h2 id="sources-title" hidden>Sources</h2>
+    <div id="sources"></div>
+  </section>
+  <aside>
+    <div>
+      <h2>Add documents</h2>
+      <form id="upload">
+        <input type="file" id="files" multiple accept=".md,.markdown,.txt,.pdf,.html,.htm" aria-label="Files">
+        <p><button id="upload-btn">Upload &amp; index</button></p>
+        <div class="muted" id="upload-result"></div>
+      </form>
+    </div>
+    <div>
+      <h2>Indexed documents</h2>
+      <ul class="docs" id="docs"><li class="muted">Loading…</li></ul>
+    </div>
+  </aside>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const headers = (extra = {}) => {
+  const h = { ...extra };
+  if ($("apikey").value) h["X-API-Key"] = $("apikey").value;
+  return h;
+};
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+async function refresh() {
+  try {
+    const h = await (await fetch("/health")).json();
+    $("health").textContent = `${h.documents} docs · ${h.chunks} chunks · ${h.generator}`;
+  } catch { $("health").textContent = "offline"; }
+  const res = await fetch("/v1/documents", { headers: headers() });
+  const list = $("docs");
+  if (!res.ok) { list.innerHTML = `<li class="muted">${res.status === 401 ? "API key required" : "Unavailable"}</li>`; return; }
+  const docs = await res.json();
+  list.innerHTML = docs.length ? "" : '<li class="muted">No documents yet</li>';
+  for (const d of docs) {
+    const li = document.createElement("li");
+    li.innerHTML = `<span title="${esc(d.source)}">${esc(d.title)}</span><span class="muted" style="flex:0">${d.num_chunks}</span>`;
+    const del = document.createElement("button");
+    del.className = "ghost"; del.textContent = "✕"; del.title = "Delete";
+    del.onclick = async () => { await fetch(`/v1/documents/${encodeURIComponent(d.doc_id)}`, { method: "DELETE", headers: headers() }); refresh(); };
+    li.appendChild(del); list.appendChild(li);
+  }
+}
+
+function renderAnswer(text) {
+  $("answer").innerHTML = esc(text).replace(/\[(S\d+(?:\s*[,;]\s*S?\d+)*)\]/gi, (m, g) =>
+    g.split(/\s*[,;]\s*/).map((l) => `<span class="cite" data-label="S${l.replace(/^S/i, "")}">S${l.replace(/^S/i, "")}</span>`).join(""));
+  for (const el of $("answer").querySelectorAll(".cite")) {
+    el.onclick = () => {
+      const card = document.querySelector(`.source[data-label="${el.dataset.label}"]`);
+      if (card) { card.scrollIntoView({ behavior: "smooth", block: "center" }); card.classList.add("flash"); setTimeout(() => card.classList.remove("flash"), 900); }
+    };
+  }
+}
+
+function renderDone(a) {
+  renderAnswer(a.answer);
+  const cited = new Set(a.citations.map((c) => c.label));
+  $("sources-title").hidden = !a.sources.length;
+  $("sources").innerHTML = a.sources.map((s) => `
+    <div class="source ${cited.has(s.label) ? "cited" : ""}" data-label="${s.label}">
+      <header><span class="label">${s.label}</span><span class="loc">${esc(s.location)}</span>
+      ${s.flags.length ? `<span class="flag">${esc(s.flags.join(", "))}</span>` : ""}
+      <span class="score">${s.score.toFixed(3)}</span></header>
+      <p>${esc((s.text || "").split("\n").filter((l) => !/^\s*#{1,6}\s/.test(l)).join("\n").trim())}</p>
+    </div>`).join("");
+  const t = a.timings_ms, parts = [];
+  parts.push(`grounded <b>${a.grounded_score == null ? "n/a" : (100 * a.grounded_score).toFixed(0) + "%"}</b>`);
+  parts.push(`total <b>${(t.total || 0).toFixed(0)} ms</b> (retrieve ${(t.retrieve || 0).toFixed(0)} · generate ${(t.generate || 0).toFixed(0)})`);
+  parts.push(`cost <b>$${a.usage.cost_usd.toFixed(5)}</b>`);
+  parts.push(`generator <b>${esc(a.generator)}</b>`);
+  for (const f of a.flags) parts.push(`<span class="flag">${esc(f)}</span>`);
+  $("meta").innerHTML = parts.map((p) => `<span>${p}</span>`).join("");
+}
+
+async function ask(question) {
+  $("go").disabled = true; $("answer").textContent = ""; $("meta").textContent = ""; $("sources").innerHTML = "";
+  let text = "";
+  try {
+    const res = await fetch("/v1/query/stream", { method: "POST", headers: headers({ "Content-Type": "application/json" }), body: JSON.stringify({ question }) });
+    if (!res.ok) { $("answer").textContent = `Error ${res.status}: ${(await res.json()).detail || ""}`; return; }
+    const reader = res.body.getReader(); const decoder = new TextDecoder(); let buf = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      let idx;
+      while ((idx = buf.indexOf("\n\n")) >= 0) {
+        const raw = buf.slice(0, idx); buf = buf.slice(idx + 2);
+        const event = (raw.match(/^event: (.*)$/m) || [])[1];
+        const data = JSON.parse((raw.match(/^data: (.*)$/m) || [])[1] || "null");
+        if (event === "token") { text += data; renderAnswer(text); }
+        else if (event === "done") renderDone(data);
+        else if (event === "error") $("answer").textContent = `Error: ${data}`;
+      }
+    }
+  } catch (err) { $("answer").textContent = `Error: ${err}`; }
+  finally { $("go").disabled = false; }
+}
+
+$("ask").onsubmit = (e) => { e.preventDefault(); ask($("question").value.trim()); };
+for (const b of $("examples").querySelectorAll("button")) b.onclick = () => { $("question").value = b.textContent; ask(b.textContent); };
+$("upload").onsubmit = async (e) => {
+  e.preventDefault();
+  const files = $("files").files; if (!files.length) return;
+  const body = new FormData(); for (const f of files) body.append("files", f);
+  $("upload-btn").disabled = true; $("upload-result").textContent = "Indexing…";
+  try {
+    const res = await fetch("/v1/documents", { method: "POST", headers: headers(), body });
+    const r = await res.json();
+    $("upload-result").textContent = res.ok ? `Added ${r.added.length}, updated ${r.updated.length}, unchanged ${r.skipped.length} · ${r.chunks} chunks in ${r.seconds}s` : `Error: ${r.detail}`;
+  } finally { $("upload-btn").disabled = false; refresh(); }
+};
+$("apikey").onchange = refresh;
+refresh();
+</script>
+</body>
+</html>

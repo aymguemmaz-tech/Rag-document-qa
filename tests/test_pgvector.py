@@ -5,9 +5,11 @@ from collections.abc import Iterator
 import numpy as np
 import pytest
 
-from ragqa.config import ChunkingConfig
+from ragqa.config import ChunkingConfig, PipelineConfig
 from ragqa.embeddings import HashingEmbedder
+from ragqa.generation.generators import ExtractiveGenerator
 from ragqa.ingest.chunking import build_chunker
+from ragqa.pipeline import RAGPipeline
 from ragqa.store import CollectionMismatchError, MemoryStore
 from ragqa.types import Document
 
@@ -73,6 +75,32 @@ def test_sql_bm25_agrees_with_python_bm25(pg_store: object, collection_name: str
         assert sql_top and np.all(np.diff([s.score for s in sql_top]) <= 1e-9)
         agree += sql_top[0].chunk_id == py_top[0].chunk_id
     assert agree >= 4  # different stemmers (Snowball vs ours) may disagree on a rare tie
+
+
+def test_full_pipeline_on_pgvector(pg_url: str, collection_name: str, corpus_docs: list[Document]) -> None:
+    from ragqa.store.pgvector import PgVectorStore
+
+    emb = HashingEmbedder(dim=256)
+    config = PipelineConfig().with_overrides({"generation.abstain_threshold": 0.3})
+    store = PgVectorStore(pg_url)
+    try:
+        pipe = RAGPipeline(
+            config,
+            store=store,
+            embedder=emb,
+            generator=ExtractiveGenerator(emb, config.generation),
+            collection=collection_name,
+        )
+        report = pipe.ingest(corpus_docs)
+        assert len(report.added) == len(corpus_docs)
+        assert pipe.ingest(corpus_docs).skipped  # incremental
+        answer = pipe.ask("How long is identifiable GPS trip data kept?")
+        assert "90 days" in answer.text and answer.citations
+        superseded = [s for s in answer.sources if s.chunk.metadata.get("status") == "superseded"]
+        assert superseded == []
+    finally:
+        store.drop_collection(collection_name)
+        store.close()
 
 
 def test_pgvector_term_stats_match_memory(pg_store: object, collection_name: str, sample_doc: Document) -> None:
