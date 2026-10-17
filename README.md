@@ -21,7 +21,7 @@ comes with an **evaluation layer that measures every design choice** instead of 
 - [x] **Generation** — OpenAI-compatible LLM client, versioned prompts, `[S#]` citations, injection guard, grounding verifier, extractive baseline
 - [x] **Retrieval** — hybrid search with Reciprocal Rank Fusion, four rerankers, multi-query and HyDE expansion
 - [x] **Serving** — RAG pipeline, FastAPI service with streaming, web UI, `ragqa` CLI
-- [ ] **Evaluation** — 150-question gold set with evidence spans, metrics, bootstrap CIs, permutation tests
+- [x] **Evaluation** — 150-question gold set with evidence spans, metrics, bootstrap CIs, permutation tests
 - [ ] **Ablations** — experiment grid, output variability study, report with charts, CI quality gate
 - [ ] **Deployment** — Docker image, docker compose with pgvector, Makefile
 - [ ] **Results** — reference evaluation run
@@ -50,6 +50,15 @@ ragqa serve                       # web UI + API on http://127.0.0.1:8000 (docs 
 export OPENAI_API_KEY=sk-...
 ragqa ingest data/corpus --collection gpt      # a new collection: different embedder, different vectors
 ragqa ask "What caused the April payment outage?" --collection gpt
+```
+
+## Evaluation
+
+The sample corpus is a **fictional** company (Veloria Mobility, an e-scooter operator), so a model
+cannot answer from memory: 150 questions with evidence spans measure grounding, not recall of the internet.
+
+```bash
+ragqa eval validate                                   # every evidence span exists verbatim in the corpus
 ```
 
 ## Development

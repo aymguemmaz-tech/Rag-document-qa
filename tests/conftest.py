@@ -17,6 +17,7 @@ from ragqa.types import Document
 
 ROOT = Path(__file__).resolve().parents[1]
 CORPUS = ROOT / "data" / "corpus"
+DATASET = ROOT / "data" / "eval" / "qa.jsonl"
 
 SAMPLE_MD = """---
 title: Battery Handling SOP

@@ -1,4 +1,4 @@
-"""Command-line interface: ``ragqa ingest | ask | serve | documents | delete``."""
+"""Command-line interface: ``ragqa ingest | ask | serve | documents | delete | eval ...``."""
 
 from __future__ import annotations
 
@@ -16,6 +16,8 @@ app = typer.Typer(
     no_args_is_help=True,
     help="Citation-grounded document Q&A (RAG) with a measurable evaluation layer.",
 )
+eval_app = typer.Typer(no_args_is_help=True, help="Validate the evaluation gold set.")
+app.add_typer(eval_app, name="eval")
 
 
 def _settings(config: Path | None, collection: str | None) -> Settings:
@@ -123,6 +125,35 @@ def delete(doc_id: str, collection: str | None = CollectionOpt) -> None:
         pipeline.close()
     typer.echo("deleted" if removed else "not found")
     raise typer.Exit(0 if removed else 1)
+
+
+# ---------------------------------------------------------------------------------------------
+# Evaluation
+# ---------------------------------------------------------------------------------------------
+
+
+@eval_app.command("validate")
+def eval_validate(
+    dataset: Path = typer.Option(Path("data/eval/qa.jsonl"), exists=True),
+    corpus: Path = typer.Option(Path("data/corpus"), exists=True),
+) -> None:
+    """Check that every evidence span exists verbatim in the corpus."""
+    from collections import Counter
+
+    from ragqa.eval.dataset import load_dataset, locate_evidence
+    from ragqa.ingest.loaders import load_path
+
+    items = load_dataset(dataset)
+    docs = {d.doc_id: d for d in load_path(corpus)}
+    report = locate_evidence(items, docs)
+    typer.echo(f"{len(items)} questions over {len(docs)} documents")
+    typer.echo("by category: " + ", ".join(f"{k}={v}" for k, v in sorted(Counter(i.category for i in items).items())))
+    typer.echo("by split:    " + ", ".join(f"{k}={v}" for k, v in sorted(Counter(i.split for i in items).items())))
+    for warning in report.warnings:
+        typer.secho(f"warning: {warning}", fg="yellow")
+    for error in report.errors:
+        typer.secho(f"error: {error}", fg="red")
+    raise typer.Exit(0 if report.ok else 1)
 
 
 def run() -> None:  # pragma: no cover
