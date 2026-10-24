@@ -22,7 +22,7 @@ comes with an **evaluation layer that measures every design choice** instead of 
 - [x] **Retrieval** — hybrid search with Reciprocal Rank Fusion, four rerankers, multi-query and HyDE expansion
 - [x] **Serving** — RAG pipeline, FastAPI service with streaming, web UI, `ragqa` CLI
 - [x] **Evaluation** — 150-question gold set with evidence spans, metrics, bootstrap CIs, permutation tests
-- [ ] **Ablations** — experiment grid, output variability study, report with charts, CI quality gate
+- [x] **Ablations** — experiment grid, output variability study, report with charts, CI quality gate
 - [ ] **Deployment** — Docker image, docker compose with pgvector, Makefile
 - [ ] **Results** — reference evaluation run
 - [ ] **Guide** — PDF walkthrough of the whole project
@@ -33,7 +33,7 @@ comes with an **evaluation layer that measures every design choice** instead of 
 git clone https://github.com/aymguemmaz-tech/rag-document-qa.git
 cd rag-document-qa
 python -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
+pip install -e ".[dev,eval]"
 ```
 
 **Lite mode — no API key, no database** (WordLlama embeddings + extractive answers):
@@ -59,6 +59,10 @@ cannot answer from memory: 150 questions with evidence spans measure grounding, 
 
 ```bash
 ragqa eval validate                                   # every evidence span exists verbatim in the corpus
+ragqa eval calibrate --split dev                      # tune the abstention threshold on dev only
+ragqa eval run --spec configs/ablation.yaml           # offline grid -> results/offline/report.md + charts
+ragqa eval run --spec configs/ablation_gpt.yaml       # GPT grid: prompts, query expansion, LLM rerank, judge
+ragqa eval gate --config configs/quality_gate.yaml    # what CI runs on every push
 ```
 
 ## Development

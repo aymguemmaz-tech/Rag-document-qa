@@ -1,0 +1,37 @@
+# Offline ablation: runs anywhere, no API key (WordLlama embeddings + extractive generator).
+# ragqa eval run --spec configs/ablation.yaml
+name: offline
+dataset: data/eval/qa.jsonl
+corpus: data/corpus
+split: test
+embedder: wordllama
+generator: extractive
+seed: 13
+
+baseline:
+  chunking: {strategy: structure, size: 200, overlap: 30, contextual_headers: true}
+  retrieval: {mode: hybrid, k: 5, fetch_k: 30, rerank: none}
+  generation: {prompt: strict, max_sentences: 2, abstain_threshold: 0.46}
+  guard: {injection: drop, grounding: flag}
+
+# One factor at a time, every other setting held at the baseline.
+factors:
+  chunking.strategy: [fixed, recursive, semantic, structure]
+  chunking.size: [64, 128, 200, 400]
+  chunking.contextual_headers: [false, true]
+  retrieval.mode: [dense, lexical, hybrid]
+  retrieval.k: [1, 3, 5, 10]
+  retrieval.rerank: [none, mmr, maxsim]
+  retrieval.exclude_superseded: [false, true]
+  generation.max_sentences: [1, 2, 3]
+  guard.injection: ["off", drop]
+
+# Full factorial blocks to look for interactions.
+interactions:
+  - [chunking.strategy, retrieval.mode]
+
+primary_metrics: [mrr, overall_correct]
+
+variability:
+  temperatures: [0.0, 0.25, 0.5, 1.0]
+  runs: 5

@@ -16,3 +16,6 @@ htmlcov/
 .DS_Store
 .idea/
 .vscode/
+# evaluation runs other than the committed reference run
+results/*
+!results/offline/

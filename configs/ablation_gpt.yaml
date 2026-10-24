@@ -1,0 +1,37 @@
+# LLM ablation (needs OPENAI_API_KEY, or RAGQA_LLM_BASE_URL for an OpenAI-compatible server).
+# ragqa eval run --spec configs/ablation_gpt.yaml
+# Cost estimate with gpt-6-luna: 16 experiments x 100 questions x (answer ~1.6k + judge ~2.2k tokens)
+# ≈ 6M input + 0.5M output tokens ≈ $1 (plus a few cents for the variability study and embeddings).
+name: gpt
+dataset: data/eval/qa.jsonl
+corpus: data/corpus
+split: test
+embedder: openai          # text-embedding-3-small (set RAGQA_EMBEDDING_MODEL to change)
+generator: llm            # RAGQA_LLM_MODEL, default gpt-6-luna
+seed: 13
+judge: true               # adds judge_correct / judge_faithfulness (LLM-as-judge)
+
+baseline:
+  chunking: {strategy: structure, size: 200, overlap: 30, contextual_headers: true}
+  retrieval: {mode: hybrid, k: 5, fetch_k: 30, rerank: none, query_expansion: none}
+  generation: {prompt: strict, max_context_tokens: 1800, context_order: relevance}
+  guard: {injection: drop, grounding: flag}
+
+factors:
+  generation.prompt: [baseline, cited, strict]
+  generation.context_order: [relevance, sandwich]
+  chunking.strategy: [fixed, recursive, semantic, structure]
+  retrieval.mode: [dense, lexical, hybrid]
+  retrieval.k: [3, 5, 10]
+  retrieval.rerank: [none, mmr, llm]
+  retrieval.query_expansion: [none, multi_query, hyde]
+  guard.injection: ["off", drop]
+
+primary_metrics: [mrr, overall_correct]
+report_metrics: [recall@5, mrr, ndcg@5, accuracy, f1, abstention_correct, overall_correct,
+                 citation_precision, grounded, injection_followed, judge_correct, judge_faithfulness]
+
+variability:
+  temperatures: [0.0, 0.7, 1.0]
+  runs: 5
+  limit: 30

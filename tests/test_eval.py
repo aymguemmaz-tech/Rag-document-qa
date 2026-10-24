@@ -1,6 +1,11 @@
+from pathlib import Path
+
 import numpy as np
 import pytest
+import yaml
 
+from ragqa.config import PipelineConfig, Settings
+from ragqa.eval.ablation import AblationRunner, AblationSpec, expand_experiments, save_result
 from ragqa.eval.dataset import EvalItem, Evidence, load_dataset, locate_evidence
 from ragqa.eval.metrics import (
     answer_metrics,
@@ -10,9 +15,10 @@ from ragqa.eval.metrics import (
     retrieval_metrics,
     token_f1,
 )
+from ragqa.eval.report import write_report
 from ragqa.eval.stats import bootstrap_ci, holm_bonferroni, paired_permutation_test
 from ragqa.types import Chunk
-from tests.conftest import DATASET
+from tests.conftest import CORPUS, DATASET
 
 
 def _chunk(cid: str, doc: str, start: int, end: int) -> Chunk:
@@ -96,6 +102,52 @@ def test_validation_reports_missing_evidence(corpus_docs: list) -> None:
     )
     report = locate_evidence([item], {d.doc_id: d for d in corpus_docs})
     assert not report.ok and "not found" in report.errors[0]
+
+
+def test_expand_experiments_dedupes_baseline_levels() -> None:
+    spec = AblationSpec(
+        baseline={"retrieval": {"k": 5}},
+        factors={"retrieval.k": [3, 5], "retrieval.mode": ["dense", "hybrid"]},
+        interactions=[["retrieval.k", "retrieval.mode"]],
+    )
+    experiments, levels, tables = expand_experiments(spec)
+    names = [e.name for e in experiments]
+    assert names[0] == "baseline" and len(names) == len(set(names)) == 4
+    assert levels["retrieval.k"] == [(3, "retrieval.k=3"), (5, "baseline")]
+    assert tables[0]["cells"]["5|hybrid"] == "baseline"
+    assert PipelineConfig().with_overrides({"retrieval.k": 3}).retrieval.k == 3
+
+
+def test_small_ablation_end_to_end(tmp_path: Path) -> None:
+    spec_path = tmp_path / "spec.yaml"
+    spec_path.write_text(
+        yaml.safe_dump(
+            {
+                "name": "tiny",
+                "dataset": str(DATASET),
+                "corpus": str(CORPUS),
+                "split": "test",
+                "embedder": "hashing",
+                "generator": "extractive",
+                "n_boot": 200,
+                "n_perm": 200,
+                "baseline": {"generation": {"abstain_threshold": 0.4}},
+                "factors": {"retrieval.mode": ["dense", "lexical", "hybrid"], "guard.injection": [False, "drop"]},
+                "variability": {"temperatures": [0.0, 1.0], "runs": 2, "limit": 5},
+            }
+        )
+    )
+    settings = Settings(embedding_cache=False, _env_file=None)  # type: ignore[call-arg]
+    runner = AblationRunner(AblationSpec.from_yaml(spec_path), settings=settings, log=lambda _: None)
+    runner.items = runner.items[:15]
+    result = runner.run()
+    assert set(result.records) == {"baseline", "retrieval.mode=dense", "retrieval.mode=lexical", "guard.injection=off"}
+    assert 0.0 <= result.summaries["baseline"]["mrr"]["mean"] <= 1.0
+    assert "p_holm" in result.comparisons["retrieval.mode=dense"]["mrr"]
+    out = save_result(result, tmp_path / "out")
+    report = write_report(result, out)
+    assert (out / "summary.csv").exists() and (out / "records.jsonl").exists()
+    assert (out / "charts" / "effects_mrr.png").exists() and "## Output variability" in report.read_text()
 
 
 def test_llm_judge_parses_verdicts() -> None:

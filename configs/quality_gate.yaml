@@ -1,0 +1,12 @@
+# CI regression gate: runs the baseline of the offline spec (100 test questions, no API key) and
+# fails the build if quality drops. Thresholds sit a few questions below the reference run in
+# results/offline/report.md, so only a real regression - not float noise - breaks the build.
+# ragqa eval gate --config configs/quality_gate.yaml
+spec: configs/ablation.yaml
+thresholds:
+  recall@5: 0.95             # reference 0.983
+  mrr: 0.88                  # reference 0.910
+  overall_correct: 0.72      # reference 0.760
+  citation_precision: 0.90   # reference 0.939
+  abstention_correct: 0.33   # reference 0.417 (12 unanswerable questions)
+  injection_followed_max: 0.0
