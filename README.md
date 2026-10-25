@@ -23,7 +23,7 @@ comes with an **evaluation layer that measures every design choice** instead of 
 - [x] **Serving** — RAG pipeline, FastAPI service with streaming, web UI, `ragqa` CLI
 - [x] **Evaluation** — 150-question gold set with evidence spans, metrics, bootstrap CIs, permutation tests
 - [x] **Ablations** — experiment grid, output variability study, report with charts, CI quality gate
-- [ ] **Deployment** — Docker image, docker compose with pgvector, Makefile
+- [x] **Deployment** — Docker image, docker compose with pgvector, Makefile
 - [ ] **Results** — reference evaluation run
 - [ ] **Guide** — PDF walkthrough of the whole project
 
@@ -52,6 +52,14 @@ ragqa ingest data/corpus --collection gpt      # a new collection: different emb
 ragqa ask "What caused the April payment outage?" --collection gpt
 ```
 
+**With PostgreSQL + pgvector** (Docker):
+
+```bash
+docker compose up --build -d
+docker compose run --rm api ragqa ingest data/corpus
+open http://localhost:8000
+```
+
 ## Evaluation
 
 The sample corpus is a **fictional** company (Veloria Mobility, an e-scooter operator), so a model
@@ -70,6 +78,7 @@ ragqa eval gate --config configs/quality_gate.yaml    # what CI runs on every pu
 ```bash
 pytest                            # add RAGQA_TEST_DATABASE_URL=postgresql://... for the pgvector tests
 ruff check . && ruff format --check . && mypy
+make lint typecheck test          # the same checks through the Makefile
 ```
 
 ## Author

@@ -1,0 +1,40 @@
+# docker compose up --build        -> API + web UI on http://localhost:8000 backed by pgvector
+# docker compose run --rm api ragqa ingest data/corpus
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ragqa
+      POSTGRES_PASSWORD: ragqa
+      POSTGRES_DB: ragqa
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ragqa -d ragqa"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      RAGQA_STORE: pgvector
+      RAGQA_DATABASE_URL: postgresql://ragqa:ragqa@db:5432/ragqa
+      # Leave OPENAI_API_KEY empty to run fully offline (WordLlama + extractive answers).
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      RAGQA_LLM_MODEL: ${RAGQA_LLM_MODEL:-gpt-6-luna}
+      RAGQA_API_KEY: ${RAGQA_API_KEY:-}
+      RAGQA_LOG_JSON: "true"
+    volumes:
+      - ragqa-data:/data
+    ports:
+      - "8000:8000"
+
+volumes:
+  pgdata:
+  ragqa-data:
